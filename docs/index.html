@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noctavault — cloud chiffré post-quantique</title>
+<meta name="description" content="Cloud de fichiers chiffrés, résistant post-quantique, sur un réseau public mondial sans autorité centrale.">
+<style>
+  :root {
+    --bg: #0b0e1a;
+    --bg-2: #111529;
+    --card: #161b33;
+    --line: #232a4d;
+    --text: #dde3ff;
+    --muted: #8890b5;
+    --accent: #7c6cff;
+    --accent-2: #4dd0c4;
+    --ok: #5ee6a8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: radial-gradient(1200px 600px at 80% -10%, #1a1440 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 48px 20px 80px; }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-size: 34px; letter-spacing: .5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .moon { -webkit-text-fill-color: initial; }
+  nav.lang { margin-left: auto; }
+  nav.lang a {
+    color: var(--muted); text-decoration: none; font-size: 13.5px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  }
+  nav.lang a:hover { color: var(--text); border-color: var(--accent); }
+  p.tagline { color: var(--muted); font-size: 18px; margin: 10px 0 32px; max-width: 60ch; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 48px; }
+  .cta a.button {
+    display: inline-block; text-decoration: none;
+    background: linear-gradient(135deg, var(--accent), #5a49e8);
+    color: white; border-radius: 10px; padding: 11px 20px;
+    font-size: 15px; font-weight: 600;
+  }
+  .cta a.ghost {
+    display: inline-block; text-decoration: none;
+    background: var(--card); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 11px 20px; font-size: 15px; font-weight: 500;
+  }
+  pre {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.55;
+    font-family: ui-monospace, "JetBrains Mono", monospace; color: var(--accent-2);
+    margin-bottom: 48px;
+  }
+  section { margin-bottom: 48px; }
+  h2 {
+    font-size: 13px; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px 22px;
+  }
+  .card h3 { font-size: 16px; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 14.5px; }
+  .card code {
+    font-family: ui-monospace, monospace; color: var(--accent-2); font-size: 13px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12.5px;
+    text-transform: uppercase; letter-spacing: .5px; padding: 8px 10px;
+    border-bottom: 1px solid var(--line); }
+  td { padding: 10px; border-bottom: 1px solid rgba(35,42,77,.5); }
+  tr:last-child td { border-bottom: 0; }
+  .ok { color: var(--ok); }
+  .pending { color: var(--muted); }
+  footer {
+    color: var(--muted); font-size: 13.5px; border-top: 1px solid var(--line);
+    padding-top: 24px; display: flex; flex-wrap: wrap; gap: 8px 20px;
+  }
+  footer a { color: var(--muted); }
+  a { color: var(--accent-2); }
+  @media (max-width: 560px) {
+    main { padding: 32px 16px 60px; }
+    h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span class="moon">🌒</span> Noctavault</h1>
+    <nav class="lang"><a href="en/">English</a></nav>
+  </header>
+  <p class="tagline">Cloud de fichiers chiffrés, résistant post-quantique, sur un
+  réseau public mondial : pas d'autorité centrale, n'importe qui peut faire
+  tourner un nœud et rejoindre le réseau.</p>
+
+  <div class="cta">
+    <a class="button" href="https://github.com/noctavault/noctavault-project">Voir sur GitHub</a>
+    <a class="ghost" href="#install">Installation</a>
+  </div>
+
+  <pre id="install">curl -fsSL https://raw.githubusercontent.com/noctavault/noctavault-project/main/get.sh | sh</pre>
+
+  <section>
+    <h2>Comment ça marche</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Post-quantique</h3>
+        <p>Identité et chiffrement reposent sur <code>ML-KEM-1024</code>
+        (confidentialité) et <code>ML-DSA-65</code> (signature), deux
+        primitives normalisées NIST via PQClean.</p>
+      </div>
+      <div class="card">
+        <h3>Sans bloc ni minage</h3>
+        <p>Chaque transaction s'authentifie elle-même par signature et
+        s'applique directement dès réception. Diffusion par <b>gossip</b> :
+        un doublon est ignoré, ce qui arrête l'inondation toute seule.</p>
+      </div>
+      <div class="card">
+        <h3>Partage multi-destinataires</h3>
+        <p>La clé de fichier est encapsulée séparément pour chaque
+        destinataire via sa clé publique — sans jamais faire circuler la
+        clé en clair.</p>
+      </div>
+      <div class="card">
+        <h3>Anti-spam sans PoW</h3>
+        <p>Une simple <b>limite de débit par identité</b> (transactions par
+        minute) remplace la preuve de travail.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Architecture</h2>
+    <pre>crates/
+  nv-core/   identité post-quantique, format de fichier .nvault et .nvid
+  nv-chain/  ledger de transactions signées, rate-limit, révocation
+  nv-net/    réseau : gossip, synchronisation, mDNS/PEX
+  nv-node/   CLI (init/add/get/ls/revoke/id/daemon)
+apps/nv-app/ interface graphique (Tauri, desktop ; Android à venir)</pre>
+  </section>
+
+  <section>
+    <h2>État du projet</h2>
+    <table>
+      <tr><th>Brique</th><th>État</th></tr>
+      <tr><td>nv-core — crypto post-quantique, formats .nvault/.nvid</td><td class="ok">✅</td></tr>
+      <tr><td>nv-chain — ledger, rate-limit, révocation</td><td class="ok">✅</td></tr>
+      <tr><td>nv-net — gossip, synchronisation, mDNS/PEX</td><td class="ok">✅</td></tr>
+      <tr><td>nv-node — CLI</td><td class="ok">✅</td></tr>
+      <tr><td>nv-app — interface graphique desktop</td><td class="ok">✅</td></tr>
+      <tr><td>Android</td><td class="pending">⏳</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    <span>MIT</span>
+    <a href="https://github.com/noctavault/noctavault-project">github.com/noctavault/noctavault-project</a>
+    <a href="https://github.com/noctavault/noctavault-project/blob/main/README.md">Documentation complète</a>
+  </footer>
+</main>
+</body>
+</html>
