@@ -120,11 +120,10 @@ async fn main() -> Result<()> {
         }
         Cmd::Status => {
             let ledger = home.open_ledger()?;
-            let config = home.load_config()?;
             println!("Répertoire : {}", home.dir.display());
             println!("Transactions connues : {}", ledger.tx_count());
             println!("Fichiers publiés : {}", ledger.manifests().len());
-            println!("Pairs : {:?}", config.peers);
+            println!("Pairs : {:?}", home.peers()?);
         }
         Cmd::Daemon { listen, peers } => {
             let mut config = home.load_config()?;
@@ -142,10 +141,11 @@ async fn main() -> Result<()> {
                 .parse()?;
 
             let ledger = home.open_ledger()?;
-            let node = nv_net::Node::new(ledger, home.peers()?);
+            let resolved_peers = home.peers()?;
+            let node = nv_net::Node::new(ledger, resolved_peers.clone());
             let bound = node.listen(listen_addr).await?;
             println!("Nœud à l'écoute sur {bound}");
-            println!("Pairs : {:?}", config.peers);
+            println!("Pairs : {resolved_peers:?}");
             // Découverte automatique des nœuds du réseau local.
             let _mdns = match node.start_mdns(bound.port()) {
                 Ok(d) => {

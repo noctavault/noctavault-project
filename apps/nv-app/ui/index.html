@@ -37,7 +37,7 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   h1 .moon { -webkit-text-fill-color: initial; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
   .chip {
     background: var(--card); border: 1px solid var(--line);
     border-radius: 999px; padding: 4px 12px; font-size: 12.5px; color: var(--muted);
@@ -45,6 +45,12 @@
   .chip b { color: var(--text); font-weight: 600; }
   .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
     background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+  #btn-lang {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 4px 12px; font-size: 12.5px; cursor: pointer;
+    font-weight: 600;
+  }
+  #btn-lang:hover { color: var(--text); border-color: var(--accent); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
   button {
     background: linear-gradient(135deg, var(--accent), #5a49e8);
@@ -58,6 +64,8 @@
     background: var(--card); border: 1px solid var(--line); color: var(--text);
     font-weight: 500;
   }
+  button.ghost.danger { border-color: var(--danger); color: var(--danger); }
+  button.ghost.danger:hover { background: rgba(255,107,129,.12); }
   button.small { padding: 5px 12px; font-size: 13px; border-radius: 8px; }
   .card {
     background: var(--card); border: 1px solid var(--line);
@@ -100,49 +108,107 @@
     .chips { margin-left: 0; }
     .hide-sm { display: none; }
   }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(5,7,16,.7);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; max-width: 560px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .modal h2 { margin-bottom: 12px; }
+  .modal .hint { margin: 0 0 10px; }
+  .modal textarea {
+    width: 100%; height: 220px; resize: vertical;
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+    color: var(--text); font-family: ui-monospace, "JetBrains Mono", monospace;
+    font-size: 12px; padding: 10px; margin-bottom: 14px;
+  }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 </style>
 </head>
 <body>
   <header>
     <h1><span class="moon">🌒</span> Noctavault</h1>
     <div class="chips">
-      <span class="chip"><span class="dot"></span>nœud <b id="node-id">…</b></span>
-      <span class="chip">transactions <b id="tx-count">0</b></span>
-      <span class="chip">pairs <b id="npeers">0</b></span>
-      <span class="chip hide-sm" id="listen-chip">écoute <b id="listen">—</b></span>
+      <span class="chip"><span class="dot"></span><span data-i18n="node">nœud</span> <b id="node-id">…</b></span>
+      <span class="chip"><span data-i18n="tx">transactions</span> <b id="tx-count">0</b></span>
+      <span class="chip"><span data-i18n="peers">pairs</span> <b id="npeers">0</b></span>
+      <span class="chip hide-sm" id="listen-chip"><span data-i18n="listen">écoute</span> <b id="listen">—</b></span>
+      <button id="btn-lang">EN</button>
     </div>
   </header>
 
   <div class="actions">
-    <button id="btn-add">＋ Ajouter un fichier</button>
-    <button id="btn-share" class="ghost">🤝 Ajouter + partager</button>
-    <button id="btn-open" class="ghost">🔓 Ouvrir un .nvault</button>
-    <button id="btn-wallet" class="ghost">👛 Exporter mon portefeuille</button>
-    <button id="btn-sync" class="ghost">⟳ Synchroniser</button>
+    <button id="btn-add" data-i18n="btnAdd">＋ Ajouter un fichier</button>
+    <button id="btn-share" class="ghost" data-i18n="btnShare">🤝 Ajouter + partager</button>
+    <button id="btn-open" class="ghost" data-i18n="btnOpen">🔓 Ouvrir un .nvault</button>
+    <button id="btn-wallet-view" class="ghost" data-i18n="btnWalletView">🔑 Voir ma clé publique</button>
+    <button id="btn-wallet" class="ghost" data-i18n="btnWalletExport">👛 Exporter mon portefeuille</button>
+    <button id="btn-identity" class="ghost danger" data-i18n="btnIdentityExport">🔐 Sauvegarder ma clé privée</button>
+    <button id="btn-identity-import" class="ghost danger" data-i18n="btnIdentityImport">📥 Importer une identité</button>
+    <button id="btn-sync" class="ghost" data-i18n="btnSync">⟳ Synchroniser</button>
   </div>
 
   <div class="card">
-    <h2>Fichiers dans la blockchain</h2>
+    <h2 data-i18n="filesTitle">Fichiers dans la blockchain</h2>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Nom</th><th>Taille</th><th class="hide-sm">Chunks</th>
-          <th>Propriétaire</th><th class="hide-sm">Date</th><th></th>
+          <th data-i18n="colName">Nom</th><th data-i18n="colSize">Taille</th>
+          <th class="hide-sm" data-i18n="colChunks">Chunks</th>
+          <th data-i18n="colOwner">Propriétaire</th><th class="hide-sm" data-i18n="colDate">Date</th><th></th>
         </tr></thead>
         <tbody id="files"></tbody>
       </table>
-      <div id="files-empty" class="empty">Aucun fichier — la chaîne est vide.</div>
+      <div id="files-empty" class="empty" data-i18n="filesEmpty">Aucun fichier — la chaîne est vide.</div>
     </div>
   </div>
 
   <div class="card">
-    <h2>Pairs du réseau</h2>
+    <h2 data-i18n="peersTitle">Pairs du réseau</h2>
     <div class="peers-row">
-      <input type="text" id="peers-input" placeholder="192.168.1.10:7777, 192.168.1.11:7777">
-      <button id="btn-peers" class="ghost">Enregistrer</button>
+      <input type="text" id="peers-input" data-i18n-placeholder="peersPlaceholder"
+        placeholder="192.168.1.10:7777, 192.168.1.11:7777">
+      <button id="btn-peers" class="ghost" data-i18n="btnSave">Enregistrer</button>
     </div>
-    <div class="hint">Chaque nœud réplique l'intégralité de la blockchain. Les fichiers ajoutés
+    <div class="hint" data-i18n="peersHint">Chaque nœud réplique l'intégralité de la blockchain. Les fichiers ajoutés
     sont diffusés à tous les pairs ; seul le détenteur de la clé privée peut les rouvrir.</div>
+  </div>
+
+  <div id="wallet-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h2 data-i18n="walletTitle">Ma clé publique (.nvid)</h2>
+      <div class="hint" data-i18n="walletHint">
+        Donne ce contenu à un contact pour qu'il puisse partager un fichier
+        avec toi. Ce n'est pas secret.
+      </div>
+      <textarea id="wallet-text" readonly></textarea>
+      <div class="modal-actions">
+        <button id="btn-wallet-copy" class="ghost small" data-i18n="btnCopy">Copier</button>
+        <button id="btn-wallet-close" class="small" data-i18n="btnClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="share-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <h2 data-i18n="shareTitle">Partager avec</h2>
+      <div class="hint" data-i18n="shareHint">
+        Colle ici la ou les clés publiques (.nvid) de tes destinataires —
+        demande-leur d'ouvrir « Voir ma clé publique » chez eux et de te
+        copier le contenu.
+      </div>
+      <textarea id="share-text" data-i18n-placeholder="sharePlaceholder"
+        placeholder="-----BEGIN NOCTAVAULT ID-----&#10;…"></textarea>
+      <div class="modal-actions">
+        <button id="btn-share-cancel" class="ghost small" data-i18n="btnCancel">Annuler</button>
+        <button id="btn-share-confirm" class="small" data-i18n="btnContinue">Continuer</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast"></div>
@@ -152,13 +218,146 @@ const { invoke } = window.__TAURI__.core;
 const { open, save } = window.__TAURI__.dialog;
 
 const $ = (id) => document.getElementById(id);
+
+const I18N = {
+  fr: {
+    node: "nœud", tx: "transactions", peers: "pairs", listen: "écoute",
+    btnAdd: "＋ Ajouter un fichier",
+    btnShare: "🤝 Ajouter + partager",
+    btnOpen: "🔓 Ouvrir un .nvault",
+    btnWalletView: "🔑 Voir ma clé publique",
+    btnWalletExport: "👛 Exporter ma clé PUBLIQUE (.nvid)",
+    btnIdentityExport: "🔐 Sauvegarder ma clé privée",
+    btnIdentityImport: "📥 Importer une identité",
+    btnSync: "⟳ Synchroniser",
+    filesTitle: "Fichiers dans la blockchain",
+    colName: "Nom", colSize: "Taille", colChunks: "Chunks",
+    colOwner: "Propriétaire", colDate: "Date",
+    filesEmpty: "Aucun fichier — la chaîne est vide.",
+    peersTitle: "Pairs du réseau",
+    peersPlaceholder: "192.168.1.10:7777, 192.168.1.11:7777",
+    btnSave: "Enregistrer",
+    peersHint: "Chaque nœud réplique l'intégralité de la blockchain. Les fichiers ajoutés sont diffusés à tous les pairs ; seul le détenteur de la clé privée peut les rouvrir.",
+    walletTitle: "Ma clé publique (.nvid)",
+    walletHint: "Donne ce contenu à un contact pour qu'il puisse partager un fichier avec toi. Ce n'est pas secret.",
+    btnCopy: "Copier", btnClose: "Fermer",
+    shareTitle: "Partager avec",
+    shareHint: "Colle ici la ou les clés publiques (.nvid) de tes destinataires — demande-leur d'ouvrir « Voir ma clé publique » chez eux et de te copier le contenu.",
+    sharePlaceholder: "-----BEGIN NOCTAVAULT ID-----\n…",
+    btnContinue: "Continuer", btnCancel: "Annuler",
+    badgeMine: "à moi",
+    badgeShared: (n) => `partagé ×${n}`,
+    badgeUpdated: "maj",
+    btnRestore: "Récupérer", btnRevoke: "Révoquer",
+    confirmRevoke: (name) => `Révoquer « ${name} » ? Les chunks seront purgés sur tous les nœuds.`,
+    dlgPickFile: "Fichier à chiffrer et publier",
+    dlgPickDir: "Dossier de destination",
+    dlgOpenVault: "Manifeste .nvault à rouvrir",
+    dlgSaveWallet: "Exporter mon portefeuille public",
+    dlgSaveIdentity: "Sauvegarder ma clé privée",
+    confirmIdentityExport: "⚠️ Ce fichier contient ta clé PRIVÉE : quiconque l'obtient peut lire tous tes fichiers et signer en ton nom.\n\nNe l'envoie jamais par mail ou messagerie non chiffrée, et ne le partage avec personne. Continuer l'export ?",
+    dlgOpenIdentity: "Fichier identity.nvkey à importer",
+    confirmIdentityImport: "⚠️ Ça va REMPLACER l'identité de cet appareil par celle du fichier choisi.\n\nSi tu n'as pas sauvegardé l'identité actuelle, elle sera perdue et tout ce qui lui était destiné deviendra irrécupérable. Continuer ?",
+    toastIdentityImported: "Identité importée — redémarre Noctavault pour qu'elle soit prise en compte.",
+    toastEncrypting: "Chiffrement et publication en cours…",
+    toastPublished: (n, share, peers) => `Publié : ${n} chunk(s)${share}, diffusé à ${peers} pair(s)`,
+    toastSharedWith: (list) => `, partagé avec ${list}`,
+    toastRestored: (out) => `Fichier reconstruit : ${out}`,
+    toastRevoked: "Fichier révoqué et purge diffusée.",
+    toastCopied: "Clé publique copiée.",
+    toastWalletExported: (out) => `Portefeuille public exporté : ${out} — donne ce fichier à tes contacts pour qu'ils partagent avec toi.`,
+    toastIdentityExported: (out) => `Clé privée sauvegardée : ${out} — garde ce fichier hors ligne, ne le partage jamais.`,
+    toastSynced: (n) => `Synchronisé — ${n} transactions connues`,
+    toastPeersSaved: (list) => `Pairs enregistrés : ${list}`,
+    none: "aucun",
+    needRecipient: "Colle au moins une clé publique valide.",
+    dateLocale: "fr-FR",
+  },
+  en: {
+    node: "node", tx: "transactions", peers: "peers", listen: "listening",
+    btnAdd: "＋ Add a file",
+    btnShare: "🤝 Add + share",
+    btnOpen: "🔓 Open a .nvault",
+    btnWalletView: "🔑 View my public key",
+    btnWalletExport: "👛 Export my PUBLIC key (.nvid)",
+    btnIdentityExport: "🔐 Back up my private key",
+    btnIdentityImport: "📥 Import an identity",
+    btnSync: "⟳ Sync",
+    filesTitle: "Files in the ledger",
+    colName: "Name", colSize: "Size", colChunks: "Chunks",
+    colOwner: "Owner", colDate: "Date",
+    filesEmpty: "No files yet — the ledger is empty.",
+    peersTitle: "Network peers",
+    peersPlaceholder: "192.168.1.10:7777, 192.168.1.11:7777",
+    btnSave: "Save",
+    peersHint: "Every node replicates the entire ledger. Added files are broadcast to all peers; only the private key holder can reopen them.",
+    walletTitle: "My public key (.nvid)",
+    walletHint: "Give this content to a contact so they can share a file with you. It is not secret.",
+    btnCopy: "Copy", btnClose: "Close",
+    shareTitle: "Share with",
+    shareHint: "Paste your recipients' public key(s) (.nvid) here — ask them to open \"View my public key\" on their side and copy the content to you.",
+    sharePlaceholder: "-----BEGIN NOCTAVAULT ID-----\n…",
+    btnContinue: "Continue", btnCancel: "Cancel",
+    badgeMine: "mine",
+    badgeShared: (n) => `shared ×${n}`,
+    badgeUpdated: "updated",
+    btnRestore: "Restore", btnRevoke: "Revoke",
+    confirmRevoke: (name) => `Revoke "${name}"? Chunks will be purged on every node.`,
+    dlgPickFile: "File to encrypt and publish",
+    dlgPickDir: "Destination folder",
+    dlgOpenVault: "Manifest .nvault to reopen",
+    dlgSaveWallet: "Export my public wallet",
+    dlgSaveIdentity: "Back up my private key",
+    confirmIdentityExport: "⚠️ This file contains your PRIVATE key: anyone who gets it can read all your files and sign in your name.\n\nNever send it by email or unencrypted chat, and never share it with anyone. Continue the export?",
+    dlgOpenIdentity: "identity.nvkey file to import",
+    confirmIdentityImport: "⚠️ This will REPLACE this device's identity with the one from the chosen file.\n\nIf you haven't backed up the current identity, it will be lost and everything meant for it will become permanently unrecoverable. Continue?",
+    toastIdentityImported: "Identity imported — restart Noctavault for it to take effect.",
+    toastEncrypting: "Encrypting and publishing…",
+    toastPublished: (n, share, peers) => `Published: ${n} chunk(s)${share}, sent to ${peers} peer(s)`,
+    toastSharedWith: (list) => `, shared with ${list}`,
+    toastRestored: (out) => `File restored: ${out}`,
+    toastRevoked: "File revoked, purge broadcast.",
+    toastCopied: "Public key copied.",
+    toastWalletExported: (out) => `Public wallet exported: ${out} — give this file to your contacts so they can share with you.`,
+    toastIdentityExported: (out) => `Private key backed up: ${out} — keep this file offline, never share it.`,
+    toastSynced: (n) => `Synced — ${n} known transactions`,
+    toastPeersSaved: (list) => `Peers saved: ${list}`,
+    none: "none",
+    needRecipient: "Paste at least one valid public key.",
+    dateLocale: "en-US",
+  },
+};
+
+let lang = localStorage.getItem("nv-lang") === "en" ? "en" : "fr";
+function t(key, ...args) {
+  const v = I18N[lang][key];
+  return typeof v === "function" ? v(...args) : v;
+}
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+  $("btn-lang").textContent = lang === "fr" ? "EN" : "FR";
+}
+$("btn-lang").onclick = () => {
+  lang = lang === "fr" ? "en" : "fr";
+  localStorage.setItem("nv-lang", lang);
+  applyI18n();
+  refresh();
+};
+applyI18n();
+
 let toastTimer;
 function toast(msg, cls = "ok") {
-  const t = $("toast");
-  t.textContent = msg;
-  t.className = "show " + cls;
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = "show " + cls;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.className = ""), 4200);
+  toastTimer = setTimeout(() => (el.className = ""), 4200);
 }
 
 function human(n) {
@@ -184,11 +383,11 @@ async function refresh() {
     $("files-empty").style.display = files.length ? "none" : "block";
     for (const f of files) {
       const tr = document.createElement("tr");
-      const date = new Date(f.created * 1000).toLocaleString("fr-FR");
+      const date = new Date(f.created * 1000).toLocaleString(t("dateLocale"));
       const badges = [
-        f.mine ? '<span class="badge">à moi</span>' : "",
-        f.shared_with.length ? `<span class="badge">partagé ×${f.shared_with.length}</span>` : "",
-        f.prev_version ? '<span class="badge">maj</span>' : "",
+        f.mine ? `<span class="badge">${t("badgeMine")}</span>` : "",
+        f.shared_with.length ? `<span class="badge">${t("badgeShared", f.shared_with.length)}</span>` : "",
+        f.prev_version ? `<span class="badge">${t("badgeUpdated")}</span>` : "",
       ].join(" ");
       tr.innerHTML = `
         <td>${escapeHtml(f.name)} ${badges}</td>
@@ -200,13 +399,13 @@ async function refresh() {
       const cell = tr.lastElementChild;
       const btn = document.createElement("button");
       btn.className = "small" + (f.mine ? "" : " ghost");
-      btn.textContent = "Récupérer";
+      btn.textContent = t("btnRestore");
       btn.onclick = () => restore(f);
       cell.appendChild(btn);
       if (f.mine) {
         const del = document.createElement("button");
         del.className = "small ghost";
-        del.textContent = "Révoquer";
+        del.textContent = t("btnRevoke");
         del.onclick = () => revokeFile(f);
         cell.appendChild(del);
       }
@@ -224,34 +423,32 @@ function escapeHtml(s) {
 
 async function restore(f) {
   try {
-    const dir = await open({ directory: true, title: "Dossier de destination" });
+    const dir = await open({ directory: true, title: t("dlgPickDir") });
     if (!dir) return;
     const out = await invoke("get_by_id", { fileId: f.file_id, outDir: dir });
-    toast("Fichier reconstruit : " + out);
+    toast(t("toastRestored", out));
   } catch (e) {
     toast(String(e), "err");
   }
 }
 
+function parseNvidBlocks(text) {
+  const re = /-----BEGIN NOCTAVAULT ID-----[\s\S]*?-----END NOCTAVAULT ID-----/g;
+  return text.match(re) || [];
+}
+
+let pendingSharePath = null;
 async function addFlow(withShare) {
   try {
-    const path = await open({ title: "Fichier à chiffrer et publier" });
+    const path = await open({ title: t("dlgPickFile") });
     if (!path) return;
-    let to = [];
-    if (withShare) {
-      const nvids = await open({
-        title: "Portefeuilles .nvid des destinataires",
-        multiple: true,
-        filters: [{ name: "Portefeuille Noctavault", extensions: ["nvid"] }],
-      });
-      if (!nvids) return;
-      to = Array.isArray(nvids) ? nvids : [nvids];
+    if (!withShare) {
+      await publish(path, []);
+      return;
     }
-    toast("Chiffrement et minage en cours…");
-    const r = await invoke("add_file", { path, to });
-    const share = r.shared_with.length ? `, partagé avec ${r.shared_with.join(", ")}` : "";
-    toast(`Publié : ${r.n_chunks} chunk(s)${share}, diffusé à ${r.peers_notified} pair(s)`);
-    refresh();
+    pendingSharePath = path;
+    $("share-text").value = "";
+    $("share-modal").classList.remove("hidden");
   } catch (e) {
     toast(String(e), "err");
   }
@@ -259,28 +456,104 @@ async function addFlow(withShare) {
 $("btn-add").onclick = () => addFlow(false);
 $("btn-share").onclick = () => addFlow(true);
 
-async function revokeFile(f) {
+$("btn-share-cancel").onclick = () => {
+  $("share-modal").classList.add("hidden");
+  pendingSharePath = null;
+};
+$("btn-share-confirm").onclick = async () => {
+  const to = parseNvidBlocks($("share-text").value);
+  if (!to.length) {
+    toast(t("needRecipient"), "err");
+    return;
+  }
+  $("share-modal").classList.add("hidden");
+  await publish(pendingSharePath, to);
+  pendingSharePath = null;
+};
+
+async function publish(path, to) {
   try {
-    if (!confirm(`Révoquer « ${f.name} » ? Les chunks seront purgés sur tous les nœuds.`)) return;
-    await invoke("revoke", { fileId: f.file_id });
-    toast("Fichier révoqué et purge diffusée.");
+    toast(t("toastEncrypting"));
+    const r = await invoke("add_file", { path, to });
+    const share = r.shared_with.length ? t("toastSharedWith", r.shared_with.join(", ")) : "";
+    toast(t("toastPublished", r.n_chunks, share, r.peers_notified));
     refresh();
   } catch (e) {
     toast(String(e), "err");
   }
 }
 
+async function revokeFile(f) {
+  try {
+    if (!confirm(t("confirmRevoke", f.name))) return;
+    await invoke("revoke", { fileId: f.file_id });
+    toast(t("toastRevoked"));
+    refresh();
+  } catch (e) {
+    toast(String(e), "err");
+  }
+}
+
+$("btn-wallet-view").onclick = async () => {
+  try {
+    const text = await invoke("wallet_text");
+    $("wallet-text").value = text;
+    $("wallet-modal").classList.remove("hidden");
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+$("btn-wallet-copy").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($("wallet-text").value);
+    toast(t("toastCopied"));
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+$("btn-wallet-close").onclick = () => $("wallet-modal").classList.add("hidden");
+
 $("btn-wallet").onclick = async () => {
   try {
     const out = await save({
-      title: "Exporter mon portefeuille public",
+      title: t("dlgSaveWallet"),
       defaultPath: "portefeuille.nvid",
-      filters: [{ name: "Portefeuille Noctavault", extensions: ["nvid"] }],
+      filters: [{ name: "Noctavault", extensions: ["nvid"] }],
     });
     if (!out) return;
     await invoke("export_wallet", { outPath: out });
-    toast("Portefeuille public exporté : " + out +
-          " — donne ce fichier à tes contacts pour qu'ils partagent avec toi.");
+    toast(t("toastWalletExported", out));
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+$("btn-identity").onclick = async () => {
+  try {
+    if (!confirm(t("confirmIdentityExport"))) return;
+    const out = await save({
+      title: t("dlgSaveIdentity"),
+      defaultPath: "identity.nvkey",
+      filters: [{ name: "Noctavault", extensions: ["nvkey"] }],
+    });
+    if (!out) return;
+    await invoke("export_identity", { outPath: out });
+    toast(t("toastIdentityExported", out));
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+$("btn-identity-import").onclick = async () => {
+  try {
+    if (!confirm(t("confirmIdentityImport"))) return;
+    const path = await open({
+      title: t("dlgOpenIdentity"),
+      filters: [{ name: "Noctavault", extensions: ["nvkey"] }],
+    });
+    if (!path) return;
+    await invoke("import_identity", { inPath: path });
+    toast(t("toastIdentityImported"));
   } catch (e) {
     toast(String(e), "err");
   }
@@ -289,12 +562,12 @@ $("btn-wallet").onclick = async () => {
 $("btn-open").onclick = async () => {
   try {
     const path = await open({
-      title: "Manifeste .nvault à rouvrir",
+      title: t("dlgOpenVault"),
       filters: [{ name: "Noctavault", extensions: ["nvault"] }],
     });
     if (!path) return;
     const out = await invoke("get_file", { manifestPath: path });
-    toast("Fichier reconstruit : " + out);
+    toast(t("toastRestored", out));
   } catch (e) {
     toast(String(e), "err");
   }
@@ -303,7 +576,7 @@ $("btn-open").onclick = async () => {
 $("btn-sync").onclick = async () => {
   try {
     const n = await invoke("sync_now");
-    toast("Synchronisé — " + n + " transactions connues");
+    toast(t("toastSynced", n));
     refresh();
   } catch (e) {
     toast(String(e), "err");
@@ -317,7 +590,7 @@ $("btn-peers").onclick = async () => {
       .split(",").map((s) => s.trim()).filter(Boolean);
     await invoke("set_peers", { peers });
     delete $("peers-input").dataset.dirty;
-    toast("Pairs enregistrés : " + (peers.join(", ") || "aucun"));
+    toast(t("toastPeersSaved", peers.join(", ") || t("none")));
     refresh();
   } catch (e) {
     toast(String(e), "err");

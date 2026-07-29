@@ -6,8 +6,14 @@ use nv_chain::{Envelope, Ledger, Tx};
 use nv_core::identity::Identity;
 use nv_core::{vault, Manifest};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+
+/// Nœuds d'amorçage publics : point d'entrée pour un tout nouvel arrivant
+/// qui ne connaît encore personne sur le réseau (pas sur le même LAN, donc
+/// mDNS ne peut pas l'aider). Utilisés uniquement si aucun pair n'est déjà
+/// configuré — voir `Home::peers()`.
+pub const DEFAULT_BOOTSTRAP_PEERS: &[&str] = &["noctavault.duckdns.org:7777"];
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -82,14 +88,36 @@ impl Home {
         Ok(Ledger::open(&self.ledger_dir())?)
     }
 
+    /// Pairs configurés, ou à défaut les nœuds d'amorçage publics : un tout
+    /// nouvel arrivant n'a sinon aucun moyen de rejoindre le réseau s'il ne
+    /// connaît déjà quelqu'un (mDNS ne l'aide que sur le même LAN).
     pub fn peers(&self) -> Result<Vec<SocketAddr>> {
         let config = self.load_config()?;
+        if config.peers.is_empty() {
+            return Ok(resolve_bootstrap_peers());
+        }
         config
             .peers
             .iter()
             .map(|p| p.parse().with_context(|| format!("pair invalide : {p}")))
             .collect()
     }
+}
+
+/// Résout les nœuds d'amorçage (nom d'hôte, pas juste IP littérale) ;
+/// ignore silencieusement ceux injoignables (DNS indisponible hors ligne,
+/// nœud d'amorçage temporairement down) plutôt que de faire échouer le
+/// démarrage pour autant.
+fn resolve_bootstrap_peers() -> Vec<SocketAddr> {
+    resolve_hosts(DEFAULT_BOOTSTRAP_PEERS)
+}
+
+fn resolve_hosts(hosts: &[&str]) -> Vec<SocketAddr> {
+    hosts
+        .iter()
+        .filter_map(|s| s.to_socket_addrs().ok())
+        .flatten()
+        .collect()
 }
 
 fn dirs_home() -> Result<PathBuf> {
@@ -293,5 +321,21 @@ mod tests {
             let n = safe_out_name(&manifeste_nomme(name));
             assert!(!n.is_empty() && !n.contains(".."), "name={name:?} -> {n:?}");
         }
+    }
+
+    // `localhost` se résout via /etc/hosts, sans dépendre du réseau : le
+    // test reste fiable même hors ligne (contrairement au vrai nœud
+    // d'amorçage DuckDNS, résolu par DNS public).
+    #[test]
+    fn resolve_hosts_nom_valide_est_resolu() {
+        let addrs = resolve_hosts(&["localhost:7777"]);
+        assert!(!addrs.is_empty());
+        assert!(addrs.iter().all(|a| a.port() == 7777));
+    }
+
+    #[test]
+    fn resolve_hosts_nom_invalide_est_ignore_silencieusement() {
+        let addrs = resolve_hosts(&["ceci-nexiste-pas.invalide:7777"]);
+        assert!(addrs.is_empty());
     }
 }

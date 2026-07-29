@@ -35,6 +35,12 @@ on its own. Anti-spam is a **per-identity rate limit** (transactions per
 minute), not proof of work. Peer discovery uses mDNS on the local network
 and peer exchange (PEX) for the internet.
 
+So a brand-new node can join the network without already knowing anyone
+(mDNS only works on the same local network), `nv-node` connects by
+default to a public **bootstrap node** if no peer is configured. Once
+connected to even a single peer, discovery (PEX) and sync take over on
+their own.
+
 ## Architecture
 
 ```
@@ -87,11 +93,15 @@ cargo build -p nv-node -p nv-app
 ./target/debug/nv-node --home ~/.noctavault daemon --listen 0.0.0.0:7777 --peers 203.0.113.7:7777
 ```
 
-Or launch the GUI:
+Or launch the GUI (available in French and English):
 
 ```bash
 cargo run -p nv-app
 ```
+
+It lets you view/copy your public key, share a file by pasting a
+recipient's public key directly (no `.nvid` file needed), and back
+up/import your full identity (private key) to switch devices.
 
 ## Using your identity on multiple devices
 

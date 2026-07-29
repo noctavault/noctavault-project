@@ -36,6 +36,12 @@ débit par identité** (transactions par minute), pas une preuve de
 travail. La découverte de pairs se fait par mDNS sur le réseau local et
 par échange de pairs (PEX) pour Internet.
 
+Pour qu'un tout nouvel arrivant puisse rejoindre le réseau sans connaître
+personne (mDNS ne marche que sur le même réseau local), `nv-node` se
+connecte par défaut à un **nœud d'amorçage** public si aucun pair n'est
+configuré. Une fois connecté à ne serait-ce qu'un seul pair, la
+découverte (PEX) et la synchronisation prennent le relais tout seuls.
+
 ## Architecture
 
 ```
@@ -89,11 +95,16 @@ cargo build -p nv-node -p nv-app
 ./target/debug/nv-node --home ~/.noctavault daemon --listen 0.0.0.0:7777 --peers 203.0.113.7:7777
 ```
 
-Ou lancer l'interface graphique :
+Ou lancer l'interface graphique (disponible en français et en anglais) :
 
 ```bash
 cargo run -p nv-app
 ```
+
+Elle permet notamment de voir/copier sa clé publique, de partager un
+fichier en collant directement la clé publique d'un destinataire (sans
+passer par un fichier `.nvid`), et de sauvegarder/importer son identité
+complète (clé privée) pour changer d'appareil.
 
 ## Utiliser son identité sur plusieurs appareils
 

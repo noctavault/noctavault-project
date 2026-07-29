@@ -90,7 +90,7 @@ async fn list_files(state: State<'_, AppState>) -> CmdResult<Vec<FileEntry>> {
         .collect())
 }
 
-/// Ajoute un fichier ; `to` = chemins de portefeuilles .nvid destinataires.
+/// Ajoute un fichier ; `to` = contenu texte (.nvid collé) des destinataires.
 #[tauri::command]
 async fn add_file(
     path: String,
@@ -106,7 +106,7 @@ async fn add_file(
         .to_string();
     let recipients: Vec<PublicIdentity> = to
         .iter()
-        .map(|p| PublicIdentity::load(std::path::Path::new(p)))
+        .map(|text| PublicIdentity::from_text(text))
         .collect::<Result<_, _>>()
         .map_err(err)?;
 
@@ -206,6 +206,40 @@ async fn export_wallet(out_path: String, state: State<'_, AppState>) -> CmdResul
     Ok(out_path)
 }
 
+/// Contenu texte du portefeuille public (.nvid), pour affichage direct
+/// dans l'interface sans passer par un fichier.
+#[tauri::command]
+fn wallet_text(state: State<'_, AppState>) -> CmdResult<String> {
+    state.identity.public.to_text().map_err(err)
+}
+
+/// Exporte l'identité complète (clé PRIVÉE incluse) vers `out_path`, pour
+/// sauvegarde/transfert manuel vers un autre appareil. À ne jamais
+/// diffuser : quiconque obtient ce fichier peut déchiffrer tout ce qui
+/// nous est destiné et signer en notre nom.
+#[tauri::command]
+async fn export_identity(out_path: String, state: State<'_, AppState>) -> CmdResult<String> {
+    state
+        .identity
+        .save(std::path::Path::new(&out_path))
+        .map_err(err)?;
+    Ok(out_path)
+}
+
+/// Remplace l'identité de ce `--home` par celle du fichier `in_path`
+/// (après validation de son format). L'identité déjà chargée en mémoire
+/// pour cette session ne change qu'au redémarrage de l'application :
+/// remanier `AppState.identity` en direct toucherait tout le réseau/ledger
+/// en cours, un simple redémarrage est plus sûr et plus simple.
+#[tauri::command]
+fn import_identity(in_path: String, state: State<'_, AppState>) -> CmdResult<()> {
+    let identity = Identity::load(std::path::Path::new(&in_path)).map_err(err)?;
+    identity
+        .save(&state.home.identity_path())
+        .map_err(err)?;
+    Ok(())
+}
+
 #[tauri::command]
 async fn set_peers(peers: Vec<String>, state: State<'_, AppState>) -> CmdResult<Vec<String>> {
     let parsed: Result<Vec<SocketAddr>, _> = peers.iter().map(|p| p.parse()).collect();
@@ -279,7 +313,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             status, list_files, add_file, get_file, get_by_id, revoke, export_wallet,
-            set_peers, sync_now
+            wallet_text, export_identity, import_identity, set_peers, sync_now
         ])
         .run(tauri::generate_context!())
         .expect("erreur au lancement de Noctavault");
