@@ -19,8 +19,8 @@ use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use nv_chain::{Envelope, Ledger, Tx};
 use nv_core::identity::Identity;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
@@ -41,6 +41,17 @@ const GETTXS_COOLDOWN: Duration = Duration::from_secs(5);
 /// connexions TCP vers des adresses de son choix (abus possible contre un
 /// tiers).
 const MAX_DISCOVERED_PEERS: usize = 1000;
+/// Anti-Sybil best-effort : une identité est gratuite à créer (juste une
+/// paire de clés), donc le rate-limit par identité de `nv-chain` seul ne
+/// freine pas un attaquant qui en fabrique autant qu'il veut depuis une
+/// même machine. On plafonne donc aussi le débit de `NewTx` *acceptés* par
+/// IP source, indépendamment de l'identité signataire portée par
+/// l'enveloppe. Contournable par qui dispose de plusieurs IP (VPN, botnet)
+/// — pas une solution complète, mais ça retire l'intérêt d'un flood à
+/// identités jetables depuis une seule source (à peine plus qu'une seule
+/// identité honnête n'obtiendrait déjà).
+const MAX_NEWTX_PER_IP_WINDOW: usize = 60;
+const NEWTX_IP_WINDOW: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Error)]
 pub enum NetError {
@@ -97,6 +108,7 @@ pub struct Node {
     pub ledger: Arc<Mutex<Ledger>>,
     pub peers: Arc<Mutex<HashSet<SocketAddr>>>,
     last_txs_reply: Arc<Mutex<HashMap<SocketAddr, Instant>>>,
+    newtx_rate: Arc<Mutex<HashMap<IpAddr, VecDeque<Instant>>>>,
 }
 
 impl Node {
@@ -105,7 +117,26 @@ impl Node {
             ledger: Arc::new(Mutex::new(ledger)),
             peers: Arc::new(Mutex::new(peers.into_iter().collect())),
             last_txs_reply: Arc::new(Mutex::new(HashMap::new())),
+            newtx_rate: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    /// `true` si on doit encore accepter un `NewTx` de cette IP source sur
+    /// la fenêtre courante (voir `MAX_NEWTX_PER_IP_WINDOW`). Compte
+    /// uniquement les enveloppes qu'on tente réellement d'appliquer,
+    /// indépendamment de l'identité qui les signe.
+    async fn allow_newtx_from(&self, ip: IpAddr) -> bool {
+        let mut map = self.newtx_rate.lock().await;
+        let now = Instant::now();
+        let window = map.entry(ip).or_default();
+        while window.front().is_some_and(|t| now.duration_since(*t) >= NEWTX_IP_WINDOW) {
+            window.pop_front();
+        }
+        if window.len() >= MAX_NEWTX_PER_IP_WINDOW {
+            return false;
+        }
+        window.push_back(now);
+        true
     }
 
     pub async fn add_peer(&self, addr: SocketAddr) -> bool {
@@ -273,6 +304,9 @@ async fn handle_conn(mut stream: TcpStream, peer_addr: SocketAddr, node: Node) -
                 send_msg(&mut stream, &Msg::Hello { tx_count }).await?;
             }
             Msg::NewTx { envelope } => {
+                if !node.allow_newtx_from(peer_addr.ip()).await {
+                    continue;
+                }
                 // Ledger::submit valide signature + tx + rate-limit ; ne
                 // relaie que si vraiment nouvelle (fin de l'inondation).
                 let applied = {
@@ -304,12 +338,16 @@ async fn handle_conn(mut stream: TcpStream, peer_addr: SocketAddr, node: Node) -
                 send_msg(&mut stream, &Msg::Txs { envelopes }).await?;
             }
             Msg::Txs { envelopes } => {
-                let mut ledger = node.ledger.lock().await;
-                tokio::task::block_in_place(|| {
-                    for env in envelopes {
-                        let _ = ledger.submit(env);
+                // Même plafond par IP que `NewTx` : un pair pourrait sinon
+                // contourner le rate-limit en glissant ses enveloppes dans
+                // une réponse `Txs` plutôt qu'en `NewTx` individuels.
+                for env in envelopes {
+                    if !node.allow_newtx_from(peer_addr.ip()).await {
+                        break;
                     }
-                });
+                    let mut ledger = node.ledger.lock().await;
+                    let _ = tokio::task::block_in_place(|| ledger.submit(env));
+                }
             }
             Msg::GetPeers => {
                 let peers = node
@@ -439,5 +477,30 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
         assert_eq!(node.peers.lock().await.len(), MAX_DISCOVERED_PEERS);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn newtx_plafonne_par_ip_meme_avec_identites_differentes() {
+        // Une identité est gratuite à créer (juste une paire de clés) :
+        // sans plafond par IP source, un attaquant qui en fabrique une
+        // par transaction contournerait entièrement le rate-limit par
+        // identité de nv-chain (Sybil).
+        let d = tempfile::tempdir().unwrap();
+        let (node, addr) = spawn_node(d.path(), vec![]).await;
+
+        let n = MAX_NEWTX_PER_IP_WINDOW + 20;
+        let mut stream = TcpStream::connect(addr).await.unwrap();
+        for i in 0..n {
+            let id = Identity::generate(); // identité différente à chaque tour
+            let tx = put_chunk_tx(format!("chunk-{i}").as_bytes());
+            let envelope = Envelope::new(tx, &id).unwrap();
+            send_msg(&mut stream, &Msg::NewTx { envelope: Box::new(envelope) })
+                .await
+                .unwrap();
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+        let applied = node.ledger.lock().await.tx_count();
+        assert_eq!(applied, MAX_NEWTX_PER_IP_WINDOW);
     }
 }

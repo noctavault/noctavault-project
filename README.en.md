@@ -66,6 +66,18 @@ installs system dependencies and Rust if needed, builds and installs
 For a headless dedicated server (VPS), see `get-node.sh` — installs only
 `nv-node` and sets up a systemd service for the daemon.
 
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/noctavault/noctavault-project/main/get.ps1 | iex
+```
+
+Installs WebView2 and the Visual C++ Build Tools via `winget` if
+missing, Rust if needed, builds and installs `nv-node`/`nv-app` into
+`%LOCALAPPDATA%\Noctavault\bin`. ⚠️ Script not tested in real conditions
+(no Windows machine available to validate it) — try it on a clean
+machine before relying on it.
+
 ## Usage
 
 ```bash

@@ -29,6 +29,18 @@ pub const RATE_LIMIT_PER_WINDOW: usize = 30;
 /// Au-delà de cet âge, une révocation en attente de son manifeste est
 /// purgée (évite une croissance illimitée si le manifeste n'arrive jamais).
 pub const PENDING_REVOKE_MAX_AGE_SECS: u64 = 30 * 24 * 3600;
+/// Au-delà de cet âge sans qu'aucun manifeste connu ne le référence, un
+/// chunk est considéré orphelin et purgé (voir `purge_orphan_chunks`).
+/// Assez long pour couvrir un `add` légitime interrompu entre l'envoi des
+/// chunks et celui du manifeste (upload lent, crash du client) ; assez
+/// court pour borner la croissance du disque face à un émetteur qui n'en
+/// soumet jamais (une seule identité, sous le rate-limit, pouvait sinon
+/// remplir le disque de tout nœud indéfiniment).
+pub const ORPHAN_CHUNK_MAX_AGE_SECS: u64 = 24 * 3600;
+/// Intervalle minimal entre deux passes de purge des chunks orphelins,
+/// pour ne pas rescanner tout le disque à chaque `refresh()` (appelé
+/// toutes les 5-10 s par le daemon).
+pub const ORPHAN_PURGE_INTERVAL_SECS: u64 = 3600;
 
 #[derive(Debug, Error)]
 pub enum LedgerError {
@@ -166,6 +178,8 @@ pub struct Ledger {
     /// ainsi partagé entre un CLI ponctuel et un daemon sur le même
     /// `--home`, sans coordination explicite.
     rate: HashMap<String, VecDeque<u64>>,
+    /// Dernière passe de purge des chunks orphelins (secondes Unix).
+    last_orphan_purge: u64,
 }
 
 impl Ledger {
@@ -181,6 +195,7 @@ impl Ledger {
             pending_revokes: HashMap::new(),
             revoked: HashSet::new(),
             rate: HashMap::new(),
+            last_orphan_purge: 0,
         };
         for entry in std::fs::read_dir(dir.join("txs"))? {
             let Ok(entry) = entry else { continue };
@@ -198,6 +213,8 @@ impl Ledger {
             ));
             file_age_secs(&path).unwrap_or(0) < PENDING_REVOKE_MAX_AGE_SECS
         });
+        ledger.purge_orphan_chunks();
+        ledger.last_orphan_purge = now_secs();
         Ok(ledger)
     }
 
@@ -358,7 +375,47 @@ impl Ledger {
             self.replay(envelope, age);
             updated = true;
         }
+        if now_secs().saturating_sub(self.last_orphan_purge) >= ORPHAN_PURGE_INTERVAL_SECS {
+            self.purge_orphan_chunks();
+            self.last_orphan_purge = now_secs();
+        }
         Ok(updated)
+    }
+
+    /// Supprime les chunks stockés depuis plus de `ORPHAN_CHUNK_MAX_AGE_SECS`
+    /// qu'aucun manifeste connu ne référence : un `PutChunk` valide dont le
+    /// manifeste n'est jamais publié (panne du client entre les deux
+    /// étapes, ou simplement un émetteur qui n'en soumet jamais) restait
+    /// sinon sur disque indéfiniment — une seule identité, sous le
+    /// rate-limit, pouvait ainsi remplir le disque de tout nœud sans
+    /// limite dans le temps.
+    fn purge_orphan_chunks(&mut self) {
+        self.purge_orphan_chunks_capped(ORPHAN_CHUNK_MAX_AGE_SECS);
+    }
+
+    /// Cœur testable de `purge_orphan_chunks`, à seuil d'âge paramétrable
+    /// (même principe que `decrypt_capped` dans nv-core : teste le
+    /// mécanisme sans attendre 24h réelles).
+    fn purge_orphan_chunks_capped(&mut self, max_age_secs: u64) {
+        let referenced: HashSet<&str> = self
+            .manifests
+            .iter()
+            .flat_map(|m| m.chunks.iter().map(String::as_str))
+            .collect();
+        let orphans: Vec<String> = self
+            .chunk_index
+            .iter()
+            .filter(|(hash, path)| {
+                !referenced.contains(hash.as_str())
+                    && file_age_secs(path).unwrap_or(0) >= max_age_secs
+            })
+            .map(|(hash, _)| hash.clone())
+            .collect();
+        for hash in orphans {
+            if let Some(path) = self.chunk_index.remove(&hash) {
+                let _ = std::fs::remove_file(path);
+            }
+        }
     }
 
     /// Toutes les enveloppes connues (pour resynchronisation réseau
@@ -581,5 +638,38 @@ mod tests {
         let ledger = Ledger::open(dir.path()).unwrap();
         assert!(ledger.manifests().is_empty());
         assert!(ledger.get_chunk(&enc.manifest.chunks[0]).is_none());
+    }
+
+    #[test]
+    fn chunk_orphelin_purge_apres_expiration() {
+        // Un PutChunk dont le manifeste n'arrive jamais (panne du client,
+        // ou émetteur qui n'en soumet jamais) ne doit pas rester sur
+        // disque indéfiniment.
+        let dir = tempfile::tempdir().unwrap();
+        let id = Identity::generate();
+        let mut ledger = Ledger::open(dir.path()).unwrap();
+        let hash = blake3::hash(b"orphelin").to_hex().to_string();
+        ledger.submit(Envelope::new(chunk_tx(b"orphelin"), &id).unwrap()).unwrap();
+        assert!(ledger.get_chunk(&hash).is_some());
+
+        // max_age_secs=0 : force la purge sans attendre 24h réelles.
+        ledger.purge_orphan_chunks_capped(0);
+        assert!(ledger.get_chunk(&hash).is_none());
+    }
+
+    #[test]
+    fn chunk_reference_par_un_manifeste_survit_a_la_purge() {
+        // Même avec un seuil d'âge à zéro, un chunk qu'un manifeste
+        // connu référence encore ne doit jamais être purgé.
+        let dir = tempfile::tempdir().unwrap();
+        let id = Identity::generate();
+        let mut ledger = Ledger::open(dir.path()).unwrap();
+        let enc = vault::encrypt(b"toujours utile", "v.txt", &id).unwrap();
+        for env in file_envelopes(&enc, &id) {
+            ledger.submit(env).unwrap();
+        }
+        ledger.purge_orphan_chunks_capped(0);
+        assert!(ledger.get_chunk(&enc.manifest.chunks[0]).is_some());
+        assert_eq!(ledger.manifests().len(), 1);
     }
 }

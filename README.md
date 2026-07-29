@@ -68,6 +68,18 @@ Pour un serveur dédié sans interface graphique (VPS), voir `get-node.sh`
 — installe uniquement `nv-node` et configure un service systemd pour le
 daemon.
 
+**Windows** (PowerShell) :
+
+```powershell
+irm https://raw.githubusercontent.com/noctavault/noctavault-project/main/get.ps1 | iex
+```
+
+Installe WebView2 et les Visual C++ Build Tools via `winget` si absents,
+Rust si besoin, compile et installe `nv-node`/`nv-app` dans
+`%LOCALAPPDATA%\Noctavault\bin`. ⚠️ Script non testé en conditions
+réelles (pas de machine Windows disponible pour le valider) — à essayer
+sur une machine propre avant de s'y fier.
+
 ## Utilisation
 
 ```bash
