@@ -3,7 +3,7 @@
 # serveur dédié, et le fait tourner en service systemd persistant.
 #
 # Usage :
-#   curl -fsSL https://raw.githubusercontent.com/USER/noctavault/main/get-node.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/noctavault/noctavault-project/main/get-node.sh | sh
 #
 # ou, depuis un clone existant :
 #   ./get-node.sh
@@ -19,7 +19,7 @@
 #   curl -fsSL .../get-node.sh -o get-node.sh && sh get-node.sh
 set -e
 
-REPO_URL="${NOCTAVAULT_REPO_URL:-https://github.com/USER/noctavault.git}"
+REPO_URL="${NOCTAVAULT_REPO_URL:-https://github.com/noctavault/noctavault-project.git}"
 INSTALL_DIR="${NOCTAVAULT_INSTALL_DIR:-$HOME/.local/bin}"
 NOCTAVAULT_HOME="${NOCTAVAULT_HOME:-$HOME/.noctavault}"
 NOCTAVAULT_LISTEN="${NOCTAVAULT_LISTEN:-0.0.0.0:7777}"

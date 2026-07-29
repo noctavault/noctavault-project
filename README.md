@@ -50,7 +50,7 @@ apps/nv-app/ interface graphique (Tauri, desktop ; Android à venir)
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/USER/noctavault/main/get.sh | sh
+curl -fsSL https://raw.githubusercontent.com/noctavault/noctavault-project/main/get.sh | sh
 ```
 
 Détecte la distribution (Arch, Debian/Ubuntu, Fedora, openSUSE, Alpine),

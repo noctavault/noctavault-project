@@ -3,7 +3,7 @@
 # nv-node (CLI) et nv-app (GUI), installe les binaires dans ~/.local/bin.
 #
 # Usage :
-#   curl -fsSL https://raw.githubusercontent.com/USER/noctavault/main/get.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/noctavault/noctavault-project/main/get.sh | sh
 #
 # ou, depuis un clone existant :
 #   ./get.sh
@@ -16,7 +16,7 @@ set -e
 
 # À adapter une fois le dépôt rendu public (pas de remote configuré pour
 # l'instant : le script clone alors ce dépôt si on ne s'y trouve pas déjà).
-REPO_URL="${NOCTAVAULT_REPO_URL:-https://github.com/USER/noctavault.git}"
+REPO_URL="${NOCTAVAULT_REPO_URL:-https://github.com/noctavault/noctavault-project.git}"
 INSTALL_DIR="${NOCTAVAULT_INSTALL_DIR:-$HOME/.local/bin}"
 
 log() { printf '\033[1;36m==>\033[0m %s\n' "$1"; }
