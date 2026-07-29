@@ -1,0 +1,20 @@
+[package]
+name = "nv-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nv-core = { path = "../nv-core" }
+nv-chain = { path = "../nv-chain" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
+tracing = "0.1"
+mdns-sd.workspace = true
+blake3.workspace = true
+base64.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

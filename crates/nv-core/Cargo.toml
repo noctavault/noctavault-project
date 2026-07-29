@@ -1,0 +1,22 @@
+[package]
+name = "nv-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pqcrypto-mlkem.workspace = true
+pqcrypto-mldsa.workspace = true
+pqcrypto-traits.workspace = true
+aes-gcm.workspace = true
+blake3.workspace = true
+rand.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zeroize.workspace = true
+zstd.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

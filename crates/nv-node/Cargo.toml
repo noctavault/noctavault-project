@@ -1,0 +1,20 @@
+[package]
+name = "nv-node"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nv-core = { path = "../nv-core" }
+nv-chain = { path = "../nv-chain" }
+nv-net = { path = "../nv-net" }
+anyhow.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal"] }
+
+[lib]
+name = "nv_node"
+path = "src/node.rs"

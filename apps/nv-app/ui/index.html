@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noctavault</title>
+<style>
+  :root {
+    --bg: #0b0e1a;
+    --bg-2: #111529;
+    --card: #161b33;
+    --line: #232a4d;
+    --text: #dde3ff;
+    --muted: #8890b5;
+    --accent: #7c6cff;
+    --accent-2: #4dd0c4;
+    --danger: #ff6b81;
+    --ok: #5ee6a8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 80% -10%, #1a1440 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 26px; letter-spacing: .5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .moon { -webkit-text-fill-color: initial; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+  .chip {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 12px; font-size: 12.5px; color: var(--muted);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  .chip .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok); margin-right: 6px; vertical-align: 1px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  button {
+    background: linear-gradient(135deg, var(--accent), #5a49e8);
+    color: white; border: 0; border-radius: 10px; padding: 10px 18px;
+    font-size: 14.5px; font-weight: 600; cursor: pointer;
+    transition: transform .08s ease, filter .15s ease;
+  }
+  button:hover { filter: brightness(1.12); }
+  button:active { transform: scale(.97); }
+  button.ghost {
+    background: var(--card); border: 1px solid var(--line); color: var(--text);
+    font-weight: 500;
+  }
+  button.small { padding: 5px 12px; font-size: 13px; border-radius: 8px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .table-wrap { overflow-x: auto; }
+  .row-actions { display: flex; gap: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 12.5px;
+    text-transform: uppercase; letter-spacing: .5px; padding: 6px 10px;
+    border-bottom: 1px solid var(--line); }
+  td { padding: 9px 10px; border-bottom: 1px solid rgba(35,42,77,.5); }
+  tr:last-child td { border-bottom: 0; }
+  .mono { font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 12.5px;
+    color: var(--muted); }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--accent-2); color: var(--accent-2); }
+  .empty { color: var(--muted); text-align: center; padding: 26px 0; font-style: italic; }
+  .peers-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  input[type=text] {
+    flex: 1; min-width: 220px; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 13px; color: var(--text); font-size: 14px;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  .hint { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  #toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(80px);
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 20px; font-size: 14px; max-width: 90vw;
+    box-shadow: 0 8px 30px rgba(0,0,0,.5); opacity: 0;
+    transition: all .25s ease; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { border-color: var(--danger); color: var(--danger); }
+  #toast.ok { border-color: var(--ok); }
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    .chips { margin-left: 0; }
+    .hide-sm { display: none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span class="moon">🌒</span> Noctavault</h1>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span>nœud <b id="node-id">…</b></span>
+      <span class="chip">transactions <b id="tx-count">0</b></span>
+      <span class="chip">pairs <b id="npeers">0</b></span>
+      <span class="chip hide-sm" id="listen-chip">écoute <b id="listen">—</b></span>
+    </div>
+  </header>
+
+  <div class="actions">
+    <button id="btn-add">＋ Ajouter un fichier</button>
+    <button id="btn-share" class="ghost">🤝 Ajouter + partager</button>
+    <button id="btn-open" class="ghost">🔓 Ouvrir un .nvault</button>
+    <button id="btn-wallet" class="ghost">👛 Exporter mon portefeuille</button>
+    <button id="btn-sync" class="ghost">⟳ Synchroniser</button>
+  </div>
+
+  <div class="card">
+    <h2>Fichiers dans la blockchain</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Nom</th><th>Taille</th><th class="hide-sm">Chunks</th>
+          <th>Propriétaire</th><th class="hide-sm">Date</th><th></th>
+        </tr></thead>
+        <tbody id="files"></tbody>
+      </table>
+      <div id="files-empty" class="empty">Aucun fichier — la chaîne est vide.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Pairs du réseau</h2>
+    <div class="peers-row">
+      <input type="text" id="peers-input" placeholder="192.168.1.10:7777, 192.168.1.11:7777">
+      <button id="btn-peers" class="ghost">Enregistrer</button>
+    </div>
+    <div class="hint">Chaque nœud réplique l'intégralité de la blockchain. Les fichiers ajoutés
+    sont diffusés à tous les pairs ; seul le détenteur de la clé privée peut les rouvrir.</div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+const { invoke } = window.__TAURI__.core;
+const { open, save } = window.__TAURI__.dialog;
+
+const $ = (id) => document.getElementById(id);
+let toastTimer;
+function toast(msg, cls = "ok") {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show " + cls;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.className = ""), 4200);
+}
+
+function human(n) {
+  if (n < 1024) return n + " o";
+  if (n < 1048576) return (n / 1024).toFixed(1) + " Ko";
+  if (n < 1073741824) return (n / 1048576).toFixed(1) + " Mo";
+  return (n / 1073741824).toFixed(2) + " Go";
+}
+
+async function refresh() {
+  try {
+    const s = await invoke("status");
+    $("node-id").textContent = s.node_id;
+    $("tx-count").textContent = s.tx_count;
+    $("npeers").textContent = s.peers.length;
+    $("listen").textContent = s.listen;
+    if (!$("peers-input").matches(":focus") && !$("peers-input").dataset.dirty) {
+      $("peers-input").value = s.peers.join(", ");
+    }
+    const files = await invoke("list_files");
+    const tbody = $("files");
+    tbody.innerHTML = "";
+    $("files-empty").style.display = files.length ? "none" : "block";
+    for (const f of files) {
+      const tr = document.createElement("tr");
+      const date = new Date(f.created * 1000).toLocaleString("fr-FR");
+      const badges = [
+        f.mine ? '<span class="badge">à moi</span>' : "",
+        f.shared_with.length ? `<span class="badge">partagé ×${f.shared_with.length}</span>` : "",
+        f.prev_version ? '<span class="badge">maj</span>' : "",
+      ].join(" ");
+      tr.innerHTML = `
+        <td>${escapeHtml(f.name)} ${badges}</td>
+        <td>${human(f.size)}</td>
+        <td class="hide-sm">${f.chunks}</td>
+        <td class="mono">${f.owner}</td>
+        <td class="hide-sm">${date}</td>
+        <td class="row-actions"></td>`;
+      const cell = tr.lastElementChild;
+      const btn = document.createElement("button");
+      btn.className = "small" + (f.mine ? "" : " ghost");
+      btn.textContent = "Récupérer";
+      btn.onclick = () => restore(f);
+      cell.appendChild(btn);
+      if (f.mine) {
+        const del = document.createElement("button");
+        del.className = "small ghost";
+        del.textContent = "Révoquer";
+        del.onclick = () => revokeFile(f);
+        cell.appendChild(del);
+      }
+      tbody.appendChild(tr);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function restore(f) {
+  try {
+    const dir = await open({ directory: true, title: "Dossier de destination" });
+    if (!dir) return;
+    const out = await invoke("get_by_id", { fileId: f.file_id, outDir: dir });
+    toast("Fichier reconstruit : " + out);
+  } catch (e) {
+    toast(String(e), "err");
+  }
+}
+
+async function addFlow(withShare) {
+  try {
+    const path = await open({ title: "Fichier à chiffrer et publier" });
+    if (!path) return;
+    let to = [];
+    if (withShare) {
+      const nvids = await open({
+        title: "Portefeuilles .nvid des destinataires",
+        multiple: true,
+        filters: [{ name: "Portefeuille Noctavault", extensions: ["nvid"] }],
+      });
+      if (!nvids) return;
+      to = Array.isArray(nvids) ? nvids : [nvids];
+    }
+    toast("Chiffrement et minage en cours…");
+    const r = await invoke("add_file", { path, to });
+    const share = r.shared_with.length ? `, partagé avec ${r.shared_with.join(", ")}` : "";
+    toast(`Publié : ${r.n_chunks} chunk(s)${share}, diffusé à ${r.peers_notified} pair(s)`);
+    refresh();
+  } catch (e) {
+    toast(String(e), "err");
+  }
+}
+$("btn-add").onclick = () => addFlow(false);
+$("btn-share").onclick = () => addFlow(true);
+
+async function revokeFile(f) {
+  try {
+    if (!confirm(`Révoquer « ${f.name} » ? Les chunks seront purgés sur tous les nœuds.`)) return;
+    await invoke("revoke", { fileId: f.file_id });
+    toast("Fichier révoqué et purge diffusée.");
+    refresh();
+  } catch (e) {
+    toast(String(e), "err");
+  }
+}
+
+$("btn-wallet").onclick = async () => {
+  try {
+    const out = await save({
+      title: "Exporter mon portefeuille public",
+      defaultPath: "portefeuille.nvid",
+      filters: [{ name: "Portefeuille Noctavault", extensions: ["nvid"] }],
+    });
+    if (!out) return;
+    await invoke("export_wallet", { outPath: out });
+    toast("Portefeuille public exporté : " + out +
+          " — donne ce fichier à tes contacts pour qu'ils partagent avec toi.");
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+$("btn-open").onclick = async () => {
+  try {
+    const path = await open({
+      title: "Manifeste .nvault à rouvrir",
+      filters: [{ name: "Noctavault", extensions: ["nvault"] }],
+    });
+    if (!path) return;
+    const out = await invoke("get_file", { manifestPath: path });
+    toast("Fichier reconstruit : " + out);
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+$("btn-sync").onclick = async () => {
+  try {
+    const n = await invoke("sync_now");
+    toast("Synchronisé — " + n + " transactions connues");
+    refresh();
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+$("peers-input").addEventListener("input", (e) => (e.target.dataset.dirty = "1"));
+$("btn-peers").onclick = async () => {
+  try {
+    const peers = $("peers-input").value
+      .split(",").map((s) => s.trim()).filter(Boolean);
+    await invoke("set_peers", { peers });
+    delete $("peers-input").dataset.dirty;
+    toast("Pairs enregistrés : " + (peers.join(", ") || "aucun"));
+    refresh();
+  } catch (e) {
+    toast(String(e), "err");
+  }
+};
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/nv-core",
+    "crates/nv-chain",
+    "crates/nv-net",
+    "crates/nv-node",
+    "apps/nv-app/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+pqcrypto-mlkem = "0.1"
+pqcrypto-mldsa = "0.1"
+pqcrypto-traits = "0.3"
+aes-gcm = "0.10"
+blake3 = "1"
+rand = "0.8"
+base64 = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+zeroize = "1"
+zstd = "0.13"
+mdns-sd = "0.13"
